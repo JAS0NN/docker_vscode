@@ -1,4 +1,3 @@
-# Dockerfile for VSCode with VNC GUI Access
 FROM ubuntu:22.04
 
 # Set environment variables for non-interactive installation
@@ -16,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     xfce4 \
     xfce4-goodies \
     tightvncserver \
+    dbus-x11 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -48,7 +48,8 @@ Xvfb :0 -screen 0 1280x720x24 &\n\
 sleep 2\n\
 export DISPLAY=:0\n\
 su - vscodeuser -c "vncserver :1 -geometry 1280x720 -depth 24"\n\
-su - vscodeuser -c "code --no-sandbox"\n\
+su - vscodeuser -c "DISPLAY=:1 startxfce4 &"\n\
+su - vscodeuser -c "DISPLAY=:1 code --no-sandbox &"\n\
 wait' > /entrypoint.sh \
     && chmod +x /entrypoint.sh
 
