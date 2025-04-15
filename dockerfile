@@ -19,7 +19,8 @@ RUN apt-get update && apt-get install -y \
     xterm \
     sudo \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
 
 # Install Visual Studio Code
 RUN wget -qO - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg \
@@ -40,7 +41,7 @@ WORKDIR /home/vscodeuser
 RUN mkdir ~/.vnc \
     && echo "password" | vncpasswd -f > ~/.vnc/passwd \
     && chmod 600 ~/.vnc/passwd \
-    && echo '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport XKL_XMODMAP_DISABLE=1\nxrdb $HOME/.Xresources\nstartxfce4 &' > ~/.vnc/xstartup \
+    && echo '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport XKL_XMODMAP_DISABLE=1\nexport DISPLAY=:1\nxrdb $HOME/.Xresources\nstartxfce4 &\nsleep 3\ncode --no-sandbox &' > ~/.vnc/xstartup \
     && chmod +x ~/.vnc/xstartup
 
 # Create an entrypoint script to start services
@@ -57,17 +58,9 @@ sleep 2\n\
 # Set proper permissions for the vscodeuser'\''s .vnc directory\n\
 chown -R vscodeuser:vscodeuser /home/vscodeuser/.vnc\n\
 \n\
-# Start VNC server as vscodeuser\n\
+# Start VNC server as vscodeuser (which will start XFCE4 and VSCode via xstartup)\n\
 su - vscodeuser -c "vncserver :1 -geometry 1280x720 -depth 24"\n\
 sleep 2\n\
-\n\
-# Export DISPLAY variable for all processes\n\
-export DISPLAY=:1\n\
-\n\
-# Start XFCE4 and VSCode\n\
-su - vscodeuser -c "startxfce4 &"\n\
-sleep 3\n\
-su - vscodeuser -c "code --no-sandbox &"\n\
 \n\
 # Keep the container running\n\
 tail -f /dev/null' > /entrypoint.sh \
