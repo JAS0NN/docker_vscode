@@ -45,9 +45,21 @@ USER root
 
 # Create a simple entrypoint script with direct path to code-server
 RUN echo '#!/bin/bash\n\
-echo "Starting code-server..."\n\
-# Use the direct path to the code-server binary\n\
-su - vscodeuser -c "/home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
+echo "--- Entrypoint Start ---"\n\
+echo "Running as: $(whoami)"\n\
+echo "Attempting to start code-server as vscodeuser..."\n\
+echo "Command: /home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
+# Execute code-server as vscodeuser and capture exit code\n\
+su - vscodeuser -c "echo \\"--- Running as vscodeuser: $(whoami) ---\\"; echo \\"--- vscodeuser PATH: $PATH ---\\"; echo \\"--- vscodeuser Environment: ---\\"; env; echo \\"--- Starting code-server process ---\\"; /home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
+EXIT_CODE=$?\n\
+echo "--- code-server process exited with code: $EXIT_CODE ---"\n\
+# Keep container running if needed for debugging, or exit based on code\n\
+# exit $EXIT_CODE \n\
+# For debugging, let\'s sleep indefinitely if it fails\n\
+if [ $EXIT_CODE -ne 0 ]; then\n\
+  echo "Error detected. Sleeping indefinitely for debugging..."\n\
+  sleep infinity\n\
+fi\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Expose VSCode Server port
