@@ -21,65 +21,33 @@ RUN useradd -m -s /bin/bash vscodeuser && \
 USER vscodeuser
 WORKDIR /home/vscodeuser
 
-# Install code-server with enhanced debugging
+# Install code-server directly from GitHub releases
 RUN mkdir -p /home/vscodeuser/.local/bin && \
-    echo "Downloading installation script..." && \
-    curl -fsSL https://code-server.dev/install.sh > /tmp/install-code-server.sh && \
-    echo "Examining installation script..." && \
-    grep -n "install_" /tmp/install-code-server.sh && \
-    echo "Running installation with verbose output..." && \
-    bash -x /tmp/install-code-server.sh || echo "Installation script failed with exit code $?" && \
-    echo "Checking installation results..." && \
-    ls -la /home/vscodeuser/.local/bin/ && \
-    ls -la /usr/local/bin/ && \
-    ls -la /home/vscodeuser/.local/share/ && \
+    echo "Downloading code-server directly from GitHub..." && \
+    VERSION="4.14.1" && \
+    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz && \
+    echo "Extracting code-server..." && \
+    mkdir -p /home/vscodeuser/.local/lib/code-server && \
+    tar -xzf /tmp/code-server.tar.gz -C /home/vscodeuser/.local/lib && \
+    mv /home/vscodeuser/.local/lib/code-server-${VERSION}-linux-amd64 /home/vscodeuser/.local/lib/code-server && \
+    echo "Creating symlink to code-server binary..." && \
+    ln -sf /home/vscodeuser/.local/lib/code-server/bin/code-server /home/vscodeuser/.local/bin/code-server && \
+    echo "Setting permissions..." && \
+    chown -R vscodeuser:vscodeuser /home/vscodeuser/.local && \
     echo "Setting up PATH..." && \
     echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc && \
-    echo 'export PATH=$PATH:$HOME/.local/bin' >> /home/vscodeuser/.bashrc && \
-    echo 'export PATH=$PATH:$HOME/.local/share/code-server/bin' >> /home/vscodeuser/.bashrc && \
-    echo "Searching for code-server binary..." && \
-    find / -name "code-server" -type f -o -type l 2>/dev/null || echo "code-server binary not found"
+    echo "Verifying installation..." && \
+    ls -la /home/vscodeuser/.local/bin/ && \
+    ls -la /home/vscodeuser/.local/lib/code-server/bin/
 
 # Switch back to root to create entrypoint
 USER root
 
-# Create an entrypoint script with enhanced debugging and fallback paths
+# Create a simple entrypoint script with direct path to code-server
 RUN echo '#!/bin/bash\n\
 echo "Starting code-server..."\n\
-echo "Debugging: Checking if code-server exists anywhere in the system:"\n\
-find / -name "code-server" -type f -o -type l 2>/dev/null\n\
-echo "Debugging: Current PATH for root user:"\n\
-echo $PATH\n\
-echo "Debugging: vscodeuser environment:"\n\
-su - vscodeuser -c "echo PATH=\\$PATH; which code-server || echo code-server not in PATH"\n\
-\n\
-# Try multiple possible paths for code-server\n\
-echo "Attempting to start code-server with multiple possible paths:"\n\
-\n\
-# First try: Using PATH after sourcing bashrc\n\
-echo "Attempt 1: Using PATH after sourcing bashrc"\n\
-su - vscodeuser -c "source ~/.bashrc && code-server --bind-addr 0.0.0.0:8080 --auth password" && exit 0\n\
-\n\
-# Second try: Direct path to .local/bin\n\
-echo "Attempt 2: Direct path to .local/bin"\n\
-if [ -f "/home/vscodeuser/.local/bin/code-server" ]; then\n\
-  su - vscodeuser -c "/home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password" && exit 0\n\
-fi\n\
-\n\
-# Third try: Check in .local/share/code-server/bin\n\
-echo "Attempt 3: Check in .local/share/code-server/bin"\n\
-if [ -f "/home/vscodeuser/.local/share/code-server/bin/code-server" ]; then\n\
-  su - vscodeuser -c "/home/vscodeuser/.local/share/code-server/bin/code-server --bind-addr 0.0.0.0:8080 --auth password" && exit 0\n\
-fi\n\
-\n\
-# Fourth try: Check in /usr/local/bin\n\
-echo "Attempt 4: Check in /usr/local/bin"\n\
-if [ -f "/usr/local/bin/code-server" ]; then\n\
-  su - vscodeuser -c "/usr/local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password" && exit 0\n\
-fi\n\
-\n\
-echo "ERROR: Could not find code-server binary in any expected location"\n\
-exit 1\n\
+# Use the direct path to the code-server binary\n\
+su - vscodeuser -c "/home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
 ' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Expose VSCode Server port
