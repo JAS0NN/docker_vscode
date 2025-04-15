@@ -1,6 +1,5 @@
 FROM ubuntu:22.04
 
-# Set environment variables for non-interactive installation
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update and install necessary packages
@@ -17,19 +16,19 @@ RUN apt-get update && apt-get install -y \
 # Create a user for running VSCode Server
 RUN useradd -m -s /bin/bash vscodeuser && \
     echo "vscodeuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-USER vscodeuser
-WORKDIR /home/vscodeuser
 
-# Install VSCode Server
+# Install code-server (VSCode Server)
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
-# Create an entrypoint script
-USER root
+# Create an entrypoint script with proper path to code-server
 RUN echo '#!/bin/bash\n\
-# Start code-server\n\
-su - vscodeuser -c "code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
-' > /entrypoint.sh \
-    && chmod +x /entrypoint.sh
+export PATH=$PATH:/usr/bin:/usr/local/bin\n\
+echo "Starting code-server..."\n\
+su - vscodeuser -c "/usr/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Set working directory
+WORKDIR /home/vscodeuser
 
 # Expose VSCode Server port
 EXPOSE 8080
