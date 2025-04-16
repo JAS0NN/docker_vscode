@@ -49,9 +49,24 @@ COPY RooVeterinaryInc.roo-cline-3.11.17.vsix /tmp/
 
 # Install the extension
 RUN echo "Installing VS Code extension..." && \
+    apt-get update && apt-get install -y unzip && \
     mkdir -p /home/vscodeuser/.local/share/code-server/extensions && \
-    /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix && \
+    # Try the standard installation method first
+    sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix || echo "Standard installation method failed, trying manual extraction" && \
+    # Manual extraction as fallback
+    EXTENSION_ID="RooVeterinaryInc.roo-cline" && \
+    EXTENSION_DIR="/home/vscodeuser/.local/share/code-server/extensions/${EXTENSION_ID}-3.11.17" && \
+    mkdir -p "${EXTENSION_DIR}" && \
+    unzip -q /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix -d "${EXTENSION_DIR}" && \
+    # Ensure extension.json exists for code-server to recognize the extension
+    if [ ! -f "${EXTENSION_DIR}/extension.json" ]; then \
+        echo "{\"identifier\":{\"id\":\"${EXTENSION_ID}\"},\"version\":\"3.11.17\",\"location\":{\"$mid\":1,\"path\":\"${EXTENSION_DIR}\",\"scheme\":\"file\"}}" > "${EXTENSION_DIR}/extension.json"; \
+    fi && \
+    # Fix permissions
     chown -R vscodeuser:vscodeuser /home/vscodeuser/.local/share/code-server && \
+    # Verify extension installation
+    echo "Verifying extension installation..." && \
+    ls -la /home/vscodeuser/.local/share/code-server/extensions | grep -i roo && \
     echo "Extension installed successfully"
 
 # Now switch to vscodeuser after installation
@@ -68,6 +83,11 @@ RUN mkdir -p /home/vscodeuser/.config/code-server && \
     echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'echo "Config file already created with default password."' >> /entrypoint.sh && \
     echo 'ls -l /home/vscodeuser/.config/code-server/config.yaml' >> /entrypoint.sh && \
+    echo 'echo "Verifying Roo extension installation:"' >> /entrypoint.sh && \
+    echo 'ls -la /home/vscodeuser/.local/share/code-server/extensions | grep -i roo' >> /entrypoint.sh && \
+    echo 'echo "Listing all installed extensions:"' >> /entrypoint.sh && \
+    echo 'sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --list-extensions || echo "Could not list extensions"' >> /entrypoint.sh && \
+    echo 'echo "Starting code-server..."' >> /entrypoint.sh && \
     echo 'exec sudo -iu vscodeuser /home/vscodeuser/.local/bin/code-server' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
