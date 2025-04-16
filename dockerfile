@@ -17,15 +17,14 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -s /bin/bash vscodeuser && \
     echo "vscodeuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Switch to vscodeuser for installation
-USER vscodeuser
+# Set working directory
 WORKDIR /home/vscodeuser
 
-# Install code-server directly from GitHub releases
+# Install code-server directly from GitHub releases (as root)
 RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Downloading code-server directly from GitHub..." && \
     VERSION="4.22.1" && \
-    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz -O /tmp/code-server.tar.gz && \
+    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz && \
     echo "Extracting code-server..." && \
     mkdir -p /home/vscodeuser/.local/lib/code-server && \
     tar -xzf /tmp/code-server.tar.gz --strip-components=1 -C /home/vscodeuser/.local/lib/code-server && \
@@ -34,15 +33,13 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Setting permissions..." && \
     chown -R vscodeuser:vscodeuser /home/vscodeuser/.local && \
     echo "Setting up PATH..." && \
-    echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc && \
-    echo "Verifying installation..." && \
-    ls -la /home/vscodeuser/.local/bin/ && \
-    ls -la /home/vscodeuser/.local/lib/code-server/bin/
+    echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc
 
-# Switch back to root to create entrypoint
-USER root
+# Now switch to vscodeuser after installation
+USER vscodeuser
 
 # Create a script to set default password and start code-server
+USER root
 RUN mkdir -p /home/vscodeuser/.config/code-server && \
     echo "bind-addr: 0.0.0.0:8080" > /home/vscodeuser/.config/code-server/config.yaml && \
     echo "auth: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
