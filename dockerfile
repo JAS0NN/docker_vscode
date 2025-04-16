@@ -21,10 +21,19 @@ RUN useradd -m -s /bin/bash vscodeuser && \
 WORKDIR /home/vscodeuser
 
 # Install code-server directly from GitHub releases (as root)
+# First, test network connectivity
+RUN apt-get update && apt-get install -y ca-certificates && \
+    echo "Testing network connectivity..." && \
+    curl -v https://github.com || echo "GitHub connectivity issue detected"
+
+# Download and install code-server with better error handling
 RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Downloading code-server directly from GitHub..." && \
     VERSION="4.22.1" && \
-    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz && \
+    echo "Trying wget with verbose output..." && \
+    (wget -v --no-check-certificate https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz || \
+    (echo "wget failed, trying curl..." && \
+    curl -v -L -o /tmp/code-server.tar.gz https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz)) && \
     echo "Extracting code-server..." && \
     mkdir -p /home/vscodeuser/.local/lib/code-server && \
     tar -xzf /tmp/code-server.tar.gz --strip-components=1 -C /home/vscodeuser/.local/lib/code-server && \
