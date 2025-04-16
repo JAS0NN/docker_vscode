@@ -24,12 +24,11 @@ WORKDIR /home/vscodeuser
 # Install code-server directly from GitHub releases
 RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Downloading code-server directly from GitHub..." && \
-    VERSION="4.14.1" && \
-    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz && \
+    VERSION="4.22.1" && \
+    wget -q https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz -O /tmp/code-server.tar.gz && \
     echo "Extracting code-server..." && \
     mkdir -p /home/vscodeuser/.local/lib/code-server && \
-    tar -xzf /tmp/code-server.tar.gz -C /home/vscodeuser/.local/lib && \
-    mv /home/vscodeuser/.local/lib/code-server-${VERSION}-linux-amd64 /home/vscodeuser/.local/lib/code-server && \
+    tar -xzf /tmp/code-server.tar.gz --strip-components=1 -C /home/vscodeuser/.local/lib/code-server && \
     echo "Creating symlink to code-server binary..." && \
     ln -sf /home/vscodeuser/.local/lib/code-server/bin/code-server /home/vscodeuser/.local/bin/code-server && \
     echo "Setting permissions..." && \
@@ -43,24 +42,18 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
 # Switch back to root to create entrypoint
 USER root
 
-# Create a simple entrypoint script with direct path to code-server
-RUN echo '#!/bin/bash\n\
-echo "--- Entrypoint Start ---"\n\
-echo "Running as: $(whoami)"\n\
-echo "Attempting to start code-server as vscodeuser..."\n\
-echo "Command: /home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
-# Execute code-server as vscodeuser and capture exit code\n\
-su - vscodeuser -c "echo \\"--- Running as vscodeuser: $(whoami) ---\\"; echo \\"--- vscodeuser PATH: $PATH ---\\"; echo \\"--- vscodeuser Environment: ---\\"; env; echo \\"--- Starting code-server process ---\\"; /home/vscodeuser/.local/bin/code-server --bind-addr 0.0.0.0:8080 --auth password"\n\
-EXIT_CODE=$?\n\
-echo "--- code-server process exited with code: $EXIT_CODE ---"\n\
-# Keep container running if needed for debugging, or exit based on code\n\
-# exit $EXIT_CODE \n\
-# For debugging, let\'s sleep indefinitely if it fails\n\
-if [ $EXIT_CODE -ne 0 ]; then\n\
-  echo "Error detected. Sleeping indefinitely for debugging..."\n\
-  sleep infinity\n\
-fi\n\
-' > /entrypoint.sh && chmod +x /entrypoint.sh
+# Create a script to set default password and start code-server
+RUN mkdir -p /home/vscodeuser/.config/code-server && \
+    echo "bind-addr: 0.0.0.0:8080" > /home/vscodeuser/.config/code-server/config.yaml && \
+    echo "auth: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
+    echo "password: MySecurePassword123" >> /home/vscodeuser/.config/code-server/config.yaml && \
+    echo "cert: false" >> /home/vscodeuser/.config/code-server/config.yaml && \
+    chown -R vscodeuser:vscodeuser /home/vscodeuser/.config && \
+    echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'echo "Config file already created with default password."' >> /entrypoint.sh && \
+    echo 'ls -l /home/vscodeuser/.config/code-server/config.yaml' >> /entrypoint.sh && \
+    echo 'exec sudo -iu vscodeuser /home/vscodeuser/.local/bin/code-server' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Expose VSCode Server port
 EXPOSE 8080
