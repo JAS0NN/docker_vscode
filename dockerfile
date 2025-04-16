@@ -44,6 +44,16 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Setting up PATH..." && \
     echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc
 
+# Copy the VSIX extension file
+COPY RooVeterinaryInc.roo-cline-3.11.17.vsix /tmp/
+
+# Install the extension
+RUN echo "Installing VS Code extension..." && \
+    mkdir -p /home/vscodeuser/.local/share/code-server/extensions && \
+    /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix && \
+    chown -R vscodeuser:vscodeuser /home/vscodeuser/.local/share/code-server && \
+    echo "Extension installed successfully"
+
 # Now switch to vscodeuser after installation
 USER vscodeuser
 
