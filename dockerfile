@@ -37,12 +37,15 @@ RUN useradd -m -s /bin/bash vscodeuser && \
 USER vscodeuser
 WORKDIR /home/vscodeuser
 
+# Set up .xsession to start LXDE for VNC sessions
+RUN echo "startlxde" > /home/vscodeuser/.xsession
+
 # Set up VNC server
 RUN mkdir ~/.vnc \
     && echo "password" | vncpasswd -f > ~/.vnc/passwd \
     && chmod 600 ~/.vnc/passwd \
     && touch ~/.Xresources \
-    && echo '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport XKL_XMODMAP_DISABLE=1\nexport DISPLAY=:1\nxrdb $HOME/.Xresources\nstartlxde &\nsleep 3\ncode --no-sandbox &' > ~/.vnc/xstartup \
+    && echo '#!/bin/bash\nunset SESSION_MANAGER\nunset DBUS_SESSION_BUS_ADDRESS\nexport XKL_XMODMAP_DISABLE=1\nexport DISPLAY=:1\nxrdb $HOME/.Xresources\nif [ -f $HOME/.xsession ]; then\n    . $HOME/.xsession &\nelse\n    startlxde &\nfi\nsleep 3\ncode --no-sandbox &' > ~/.vnc/xstartup \
     && chmod +x ~/.vnc/xstartup
 
 # Create an entrypoint script to start services
