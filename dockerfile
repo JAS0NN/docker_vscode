@@ -22,9 +22,10 @@ RUN apt-get update && apt-get install -y \
     && echo "allowed_users=anybody" > /etc/X11/Xwrapper.config
 
 # Install Visual Studio Code
-RUN wget -qO - https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg \
-    && install -o root -g root -m 644 packages.microsoft.gpg /etc/apt/trusted.gpg.d/ \
-    && sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list' \
+RUN apt-get update && apt-get install -y apt-transport-https ca-certificates gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /etc/apt/keyrings/microsoft.gpg \
+    && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list \
     && apt-get update \
     && apt-get install -y code \
     && apt-get clean \
