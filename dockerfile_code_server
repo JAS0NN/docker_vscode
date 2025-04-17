@@ -31,9 +31,9 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Downloading code-server directly from GitHub..." && \
     VERSION="4.22.1" && \
     echo "Trying wget with verbose output..." && \
-    (wget -v --no-check-certificate https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz -O /tmp/code-server.tar.gz || \
+    (wget -v --no-check-certificate https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz -O /tmp/code-server.tar.gz || \
     (echo "wget failed, trying curl..." && \
-    curl -v -L -o /tmp/code-server.tar.gz https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-amd64.tar.gz)) && \
+    curl -v -L -o /tmp/code-server.tar.gz https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz)) && \
     echo "Extracting code-server..." && \
     mkdir -p /home/vscodeuser/.local/lib/code-server && \
     tar -xzf /tmp/code-server.tar.gz --strip-components=1 -C /home/vscodeuser/.local/lib/code-server && \
@@ -44,44 +44,51 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Setting up PATH..." && \
     echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc
 
-# Set NODE_TLS_REJECT_UNAUTHORIZED=0 to bypass certificate validation during extension installation
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-
 # Copy the VSIX extension file
-COPY RooVeterinaryInc.roo-cline-3.11.17.vsix /tmp/
+COPY RooCode_3.12.2.vsix /tmp/
 
-# Install the extension
-RUN echo "Installing VS Code extension..." && \
-    mkdir -p /home/vscodeuser/.local/share/code-server/extensions && \
-    # Install extension using direct method
-    sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix && \
-    # Verify extension installation
-    echo "Verifying extension installation..." && \
-    ls -la /home/vscodeuser/.local/share/code-server/extensions | grep -i roo && \
-    echo "Extension installed successfully" && \
-    # Fix permissions
-    chown -R vscodeuser:vscodeuser /home/vscodeuser/.local/share/code-server
-
-# Now switch to vscodeuser after installation
+# Install the extension as vscodeuser
 USER vscodeuser
+WORKDIR /home/vscodeuser
 
-# Create a script to set default password and start code-server
+RUN echo "Attempting to install VS Code extension as $(whoami)..." && \
+    mkdir -p /home/vscodeuser/.local/share/code-server/extensions && \
+    echo "Target extension directory: /home/vscodeuser/.local/share/code-server/extensions" && \
+    ls -ld /home/vscodeuser/.local/share/code-server/extensions && \
+    echo "Running: /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooCode_3.12.2.vsix --extensions-dir /home/vscodeuser/.local/share/code-server/extensions" && \
+    /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooCode_3.12.2.vsix --extensions-dir /home/vscodeuser/.local/share/code-server/extensions && \
+    echo "Installation command finished. Verifying installation..." && \
+    ls -la /home/vscodeuser/.local/share/code-server/extensions && \
+    echo "Listing extensions via code-server command:" && \
+    /home/vscodeuser/.local/bin/code-server --list-extensions --extensions-dir /home/vscodeuser/.local/share/code-server/extensions || echo "Listing extensions failed during build" && \
+    echo "Extension installation step complete."
+
+# Switch back to root for subsequent steps
 USER root
+
+# Create config directory and config file with correct permissions and content
 RUN mkdir -p /home/vscodeuser/.config/code-server && \
     echo "bind-addr: 0.0.0.0:8080" > /home/vscodeuser/.config/code-server/config.yaml && \
     echo "auth: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
-    echo "password: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
+    echo "password: MySecurePassword123" >> /home/vscodeuser/.config/code-server/config.yaml && \
     echo "cert: false" >> /home/vscodeuser/.config/code-server/config.yaml && \
-    chown -R vscodeuser:vscodeuser /home/vscodeuser/.config && \
-    echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'echo "Config file already created with default password."' >> /entrypoint.sh && \
+    echo "Verifying config file content during build:" && \
+    cat /home/vscodeuser/.config/code-server/config.yaml && \
+    chown -R vscodeuser:vscodeuser /home/vscodeuser/.config
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'echo "--- Entrypoint Script Start ---"' >> /entrypoint.sh && \
+    echo 'echo "Current user: $(whoami)"' >> /entrypoint.sh && \
+    echo 'echo "Verifying config file ownership and content at runtime:"' >> /entrypoint.sh && \
     echo 'ls -l /home/vscodeuser/.config/code-server/config.yaml' >> /entrypoint.sh && \
-    echo 'echo "Verifying Roo extension installation:"' >> /entrypoint.sh && \
-    echo 'ls -la /home/vscodeuser/.local/share/code-server/extensions | grep -i roo' >> /entrypoint.sh && \
-    echo 'echo "Listing all installed extensions:"' >> /entrypoint.sh && \
-    echo 'sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --list-extensions || echo "Could not list extensions"' >> /entrypoint.sh && \
+    echo 'cat /home/vscodeuser/.config/code-server/config.yaml' >> /entrypoint.sh && \
+    echo 'echo "Verifying extension installation directory contents:"' >> /entrypoint.sh && \
+    echo 'ls -la /home/vscodeuser/.local/share/code-server/extensions' >> /entrypoint.sh && \
+    echo 'echo "Attempting to list installed extensions via code-server command (as vscodeuser):"' >> /entrypoint.sh && \
+    echo 'sudo -iu vscodeuser /home/vscodeuser/.local/bin/code-server --list-extensions --extensions-dir /home/vscodeuser/.local/share/code-server/extensions || echo "Listing extensions via command failed."' >> /entrypoint.sh && \
     echo 'echo "Starting code-server..."' >> /entrypoint.sh && \
-    echo 'exec sudo -iu vscodeuser /home/vscodeuser/.local/bin/code-server' >> /entrypoint.sh && \
+    echo 'exec sudo -iu vscodeuser /home/vscodeuser/.local/bin/code-server --verbose' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Expose VSCode Server port
