@@ -1,4 +1,10 @@
+# Use BuildKit syntax
+# syntax=docker/dockerfile:1
+
 FROM ubuntu:22.04
+
+# Declare target architecture build argument
+ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -30,10 +36,13 @@ RUN apt-get update && apt-get install -y ca-certificates && \
 RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Downloading code-server directly from GitHub..." && \
     VERSION="4.22.1" && \
-    echo "Trying wget with verbose output..." && \
-    (wget -v --no-check-certificate https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz -O /tmp/code-server.tar.gz || \
+    # Determine architecture suffix based on TARGETARCH
+    ARCH=${TARGETARCH:-$(dpkg --print-architecture)} && \
+    echo "Target Architecture: ${ARCH}" && \
+    echo "Trying wget with verbose output for code-server v${VERSION} on ${ARCH}..." && \
+    (wget -v --no-check-certificate https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-${ARCH}.tar.gz -O /tmp/code-server.tar.gz || \
     (echo "wget failed, trying curl..." && \
-    curl -v -L -o /tmp/code-server.tar.gz https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-arm64.tar.gz)) && \
+    curl -v -L -o /tmp/code-server.tar.gz https://github.com/coder/code-server/releases/download/v${VERSION}/code-server-${VERSION}-linux-${ARCH}.tar.gz)) && \
     echo "Extracting code-server..." && \
     mkdir -p /home/vscodeuser/.local/lib/code-server && \
     tar -xzf /tmp/code-server.tar.gz --strip-components=1 -C /home/vscodeuser/.local/lib/code-server && \
