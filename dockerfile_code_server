@@ -52,25 +52,15 @@ COPY RooVeterinaryInc.roo-cline-3.11.17.vsix /tmp/
 
 # Install the extension
 RUN echo "Installing VS Code extension..." && \
-    apt-get update && apt-get install -y unzip && \
     mkdir -p /home/vscodeuser/.local/share/code-server/extensions && \
-    # Try the standard installation method first
-    sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix || echo "Standard installation method failed, trying manual extraction" && \
-    # Manual extraction as fallback
-    EXTENSION_ID="RooVeterinaryInc.roo-cline" && \
-    EXTENSION_DIR="/home/vscodeuser/.local/share/code-server/extensions/${EXTENSION_ID}-3.11.17" && \
-    mkdir -p "${EXTENSION_DIR}" && \
-    unzip -q /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix -d "${EXTENSION_DIR}" && \
-    # Ensure extension.json exists for code-server to recognize the extension
-    if [ ! -f "${EXTENSION_DIR}/extension.json" ]; then \
-        echo "{\"identifier\":{\"id\":\"${EXTENSION_ID}\"},\"version\":\"3.11.17\",\"location\":{\"$mid\":1,\"path\":\"${EXTENSION_DIR}\",\"scheme\":\"file\"}}" > "${EXTENSION_DIR}/extension.json"; \
-    fi && \
-    # Fix permissions
-    chown -R vscodeuser:vscodeuser /home/vscodeuser/.local/share/code-server && \
+    # Install extension using direct method
+    sudo -u vscodeuser /home/vscodeuser/.local/bin/code-server --install-extension /tmp/RooVeterinaryInc.roo-cline-3.11.17.vsix && \
     # Verify extension installation
     echo "Verifying extension installation..." && \
     ls -la /home/vscodeuser/.local/share/code-server/extensions | grep -i roo && \
-    echo "Extension installed successfully"
+    echo "Extension installed successfully" && \
+    # Fix permissions
+    chown -R vscodeuser:vscodeuser /home/vscodeuser/.local/share/code-server
 
 # Now switch to vscodeuser after installation
 USER vscodeuser
