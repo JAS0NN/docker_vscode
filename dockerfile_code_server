@@ -77,7 +77,7 @@ USER root
 RUN mkdir -p /home/vscodeuser/.config/code-server && \
     echo "bind-addr: 0.0.0.0:8080" > /home/vscodeuser/.config/code-server/config.yaml && \
     echo "auth: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
-    echo "password: MySecurePassword123" >> /home/vscodeuser/.config/code-server/config.yaml && \
+    echo "password: password" >> /home/vscodeuser/.config/code-server/config.yaml && \
     echo "cert: false" >> /home/vscodeuser/.config/code-server/config.yaml && \
     chown -R vscodeuser:vscodeuser /home/vscodeuser/.config && \
     echo '#!/bin/bash' > /entrypoint.sh && \
