@@ -44,6 +44,9 @@ RUN mkdir -p /home/vscodeuser/.local/bin && \
     echo "Setting up PATH..." && \
     echo 'export PATH=$PATH:/home/vscodeuser/.local/bin' >> /home/vscodeuser/.bashrc
 
+# Set NODE_TLS_REJECT_UNAUTHORIZED=0 to bypass certificate validation during extension installation
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
 # Copy the VSIX extension file
 COPY RooVeterinaryInc.roo-cline-3.11.17.vsix /tmp/
 
